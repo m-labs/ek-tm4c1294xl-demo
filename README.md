@@ -46,8 +46,8 @@ from a clean slate system to flashing, debugging and semihosting:
     ```
 
 At this point, the target is stopped immediately after reset. Let it continue,
-and observe the `Hello, world!` printed by openocd. You're done! Now, repeat
-steps 7 and 8 until you're happy with the rest of the owl.
+and observe the `Hello, world!` printed by openocd and a blinking LED.
+You're done! Now, repeat steps 7 and 8 until you're happy with the rest of the owl.
 
 [openocd]: http://openocd.org/
 [rustup]: https://rustup.rs/

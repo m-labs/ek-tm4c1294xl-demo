@@ -4,16 +4,48 @@
 #[macro_use]
 extern crate cortex_m;
 extern crate cortex_m_rt;
+extern crate tm4c129x;
+
+use cortex_m::exception::Handlers as ExceptionHandlers;
+use tm4c129x::interrupt::Handlers as InterruptHandlers;
 
 fn main() {
     hprintln!("Hello, world!");
+
+    cortex_m::interrupt::free(|cs| {
+        let systick = tm4c129x::SYST.borrow(cs);
+        let sysctl  = tm4c129x::SYSCTL.borrow(cs);
+        let gpio_n  = tm4c129x::GPIO_PORTN.borrow(cs);
+
+        unsafe {
+            systick.rvr.write((systick.calib.read() & 0xffffff) * 100);
+            systick.csr.write(0x3);
+        }
+
+        sysctl.rcgcgpio.write(|w| w.r12().bit(true));
+        while !sysctl.prgpio.read().r12().bit() {}
+
+        gpio_n.dir.write(|w| w.bits(0x02));
+        gpio_n.den.write(|w| w.bits(0x02));
+    });
 }
 
-#[allow(dead_code)]
+extern fn sys_tick(_: cortex_m::exception::SysTick) {
+    cortex_m::interrupt::free(|cs| {
+        let gpio_n = tm4c129x::GPIO_PORTN.borrow(cs);
+        gpio_n.data.modify(|r, w| w.bits(r.bits() ^ 0x02));
+    })
+}
+
+#[used]
+#[link_section = ".rodata.exceptions"]
+pub static EXCEPTIONS: ExceptionHandlers = ExceptionHandlers {
+    sys_tick: sys_tick,
+    ..cortex_m::exception::DEFAULT_HANDLERS
+};
+
 #[used]
 #[link_section = ".rodata.interrupts"]
-static INTERRUPTS: [extern "C" fn(); 113] = [default_handler; 113];
-
-extern "C" fn default_handler() {
-    cortex_m::asm::bkpt();
-}
+pub static INTERRUPTS: InterruptHandlers = InterruptHandlers {
+    ..tm4c129x::interrupt::DEFAULT_HANDLERS
+};

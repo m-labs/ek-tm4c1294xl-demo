@@ -5,7 +5,8 @@ authors = ["whitequark <whitequark@whitequark.org>"]
 
 [dependencies]
 cortex-m = "0.2.4"
-cortex-m-rt = "0.2.0"
+cortex-m-rt = { version = "0.2.0", features = ["linker-script"], default-features = false }
+tm4c129x = "0.3.0"
 
 [profile.release]
 lto = true
