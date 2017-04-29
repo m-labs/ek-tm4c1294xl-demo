@@ -1,0 +1,12 @@
+[package]
+name = "ek-tm4c1294xl-demo"
+version = "0.1.0"
+authors = ["whitequark <whitequark@whitequark.org>"]
+
+[dependencies]
+cortex-m = "0.2.4"
+cortex-m-rt = "0.2.0"
+
+[profile.release]
+lto = true
+debug = true
