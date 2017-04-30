@@ -11,3 +11,6 @@ tm4c129x = "0.3.0"
 [profile.release]
 lto = true
 debug = true
+
+[replace]
+"cortex-m:0.2.4" = { git = "https://github.com/whitequark/cortex-m", rev = "impl-syst" }

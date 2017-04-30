@@ -17,10 +17,9 @@ fn main() {
         let sysctl  = tm4c129x::SYSCTL.borrow(cs);
         let gpio_n  = tm4c129x::GPIO_PORTN.borrow(cs);
 
-        unsafe {
-            systick.rvr.write((systick.calib.read() & 0xffffff) * 100);
-            systick.csr.write(0x3);
-        }
+        systick.set_reload(systick.get_ticks_per_10ms() * 100);
+        systick.enable_counter();
+        systick.enable_interrupt();
 
         sysctl.rcgcgpio.write(|w| w.r12().bit(true));
         while !sysctl.prgpio.read().r12().bit() {}
