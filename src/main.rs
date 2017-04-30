@@ -1,4 +1,4 @@
-#![feature(used)]
+#![feature(used, const_fn)]
 #![no_std]
 
 #[macro_use]
@@ -6,6 +6,8 @@ extern crate cortex_m;
 extern crate cortex_m_rt;
 extern crate tm4c129x;
 
+use core::cell::Cell;
+use cortex_m::ctxt::Local;
 use cortex_m::exception::Handlers as ExceptionHandlers;
 use tm4c129x::interrupt::Handlers as InterruptHandlers;
 
@@ -22,7 +24,7 @@ fn main() {
         let pwm0    = tm4c129x::PWM0.borrow(cs);
 
         // Set up system timer
-        systick.set_reload(systick.get_ticks_per_10ms() * 100);
+        systick.set_reload(systick.get_ticks_per_10ms());
         systick.enable_counter();
         systick.enable_interrupt();
 
@@ -66,26 +68,46 @@ fn main() {
         sysctl.rcgcpwm.modify(|_, w| w.r0().bit(true));
         while !sysctl.prpwm.read().r0().bit() {}
 
-        let load = /*pwmclk*/25_000_000 / /*freq*/100_000;
+        let load = (/*pwmclk*/16_000_000u32 / /*freq*/100_000) as u16;
         pwm0._0_gena.write(|w| w.actload().zero().actcmpad().one());
-        pwm0._0_load.write(|w| unsafe { w.bits(load) });
-        pwm0._0_cmpa.write(|w| unsafe { w.bits(load / /*duty*/16) });
+        pwm0._0_load.write(|w| w.load().bits(load));
+        pwm0._0_cmpa.write(|w| w.cmpa().bits(0));
         pwm0._0_ctl.write(|w| w.enable().bit(true));
         pwm0.enable.write(|w| w.pwm0en().bit(true));
     });
 }
 
-extern fn sys_tick(_: cortex_m::exception::SysTick) {
+use cortex_m::exception::SysTick;
+
+extern fn sys_tick(ctxt: SysTick) {
+    static ELAPSED: Local<Cell<u32>, SysTick> = Local::new(Cell::new(0));
+    let elapsed = ELAPSED.borrow(&ctxt);
+
+    elapsed.set(elapsed.get() + 1);
+
     cortex_m::interrupt::free(|cs| {
         let gpio_n = tm4c129x::GPIO_PORTN.borrow(cs);
         let uart0  = tm4c129x::UART0.borrow(cs);
         let pwm0   = tm4c129x::PWM0.borrow(cs);
 
-        // Blink LED
-        gpio_n.data.modify(|r, w| w.data().bits(r.data().bits() ^ 0x02));
+        // Every 1 s...
+        if elapsed.get() % 100 == 0 {
+            // Blink LED
+            gpio_n.data.modify(|r, w| w.data().bits(r.data().bits() ^ 0x02));
 
-        // Write to UART
-        uart0.dr.write(|w| w.data().bits(b'A'));
+            // Write to UART0
+            uart0.dr.write(|w| w.data().bits(b'A'));
+        }
+
+        // Every 10 ms...
+        {
+            // Change PWM0 duty cycle
+            pwm0._0_cmpa.modify(|r, w| {
+                let thresh = r.cmpa().bits();
+                let thresh = (thresh + 1) % 100;
+                w.cmpa().bits(thresh)
+            });
+        }
     })
 }
 
