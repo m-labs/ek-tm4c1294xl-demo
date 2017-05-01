@@ -71,7 +71,7 @@ fn main() {
         let load = (/*pwmclk*/16_000_000u32 / /*freq*/100_000) as u16;
         pwm0._0_gena.write(|w| w.actload().zero().actcmpad().one());
         pwm0._0_load.write(|w| w.load().bits(load));
-        pwm0._0_cmpa.write(|w| w.cmpa().bits(0));
+        pwm0._0_cmpa.write(|w| w.compa().bits(0));
         pwm0._0_ctl.write(|w| w.enable().bit(true));
         pwm0.enable.write(|w| w.pwm0en().bit(true));
     });
@@ -103,9 +103,9 @@ extern fn sys_tick(ctxt: SysTick) {
         {
             // Change PWM0 duty cycle
             pwm0._0_cmpa.modify(|r, w| {
-                let thresh = r.cmpa().bits();
+                let thresh = r.compa().bits();
                 let thresh = (thresh + 1) % 100;
-                w.cmpa().bits(thresh)
+                w.compa().bits(thresh)
             });
         }
     })
